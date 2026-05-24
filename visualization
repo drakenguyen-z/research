@@ -1,0 +1,1085 @@
+  <!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Research CPU Architecture: ARM (RISC) vs x86-64 (CISC)</title>
+    <style>
+        :root {
+            --bg: #0a0e14;
+            --surface: #131820;
+            --border: #1e2a3a;
+            --text: #c8d6e5;
+            --text-secondary: #8899aa;
+            --arm-color: #00b894;
+            --arm-glow: #00b89466;
+            --arm-bg: #0d1f1a;
+            --arm-pipeline: #0a3d2e;
+            --arm-dot: #00e6ac;
+            --x86-color: #e74c3c;
+            --x86-glow: #e74c3c66;
+            --x86-bg: #1f0f0e;
+            --x86-pipeline: #3d0f0a;
+            --x86-dot: #ff6b5b;
+            --gold: #f0c060;
+            --blue-accent: #5dade2;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            background: var(--bg);
+            font-family: 'Segoe UI', 'Inter', 'SF Pro Display', system-ui, sans-serif;
+            color: var(--text);
+            min-height: 100vh;
+            overflow-x: hidden;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 10px 15px 30px;
+            user-select: none;
+            -webkit-user-select: none;
+        }
+
+        /* Header */
+        .header {
+            text-align: center;
+            padding: 20px 10px 10px;
+            width: 100%;
+            max-width: 1300px;
+        }
+        .header h1 {
+            font-size: 2rem;
+            font-weight: 700;
+            letter-spacing: -0.5px;
+            background: linear-gradient(135deg, #e0e7ff, #b0c4de);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            margin-bottom: 4px;
+        }
+        .header .subtitle {
+            font-size: 0.9rem;
+            color: var(--text-secondary);
+            letter-spacing: 1.5px;
+            text-transform: uppercase;
+            font-weight: 500;
+        }
+        .header .badge-row {
+            display: flex;
+            justify-content: center;
+            gap: 14px;
+            margin-top: 8px;
+            flex-wrap: wrap;
+        }
+        .badge {
+            padding: 5px 14px;
+            border-radius: 20px;
+            font-size: 0.75rem;
+            font-weight: 600;
+            letter-spacing: 0.5px;
+            border: 1px solid;
+        }
+        .badge-risc {
+            background: #0d2a1f;
+            border-color: #00b89455;
+            color: #00e6ac;
+        }
+        .badge-cisc {
+            background: #2a0f0e;
+            border-color: #e74c3c55;
+            color: #ff6b5b;
+        }
+        .badge-info {
+            background: #0f1a2a;
+            border-color: #5dade255;
+            color: #7ec8f8;
+        }
+
+        /* Main container */
+        .main-container {
+            display: flex;
+            width: 100%;
+            max-width: 1350px;
+            gap: 20px;
+            margin-top: 10px;
+            flex-wrap: wrap;
+            justify-content: center;
+            align-items: stretch;
+        }
+
+        /* Chip panel */
+        .chip-panel {
+            flex: 1 1 420px;
+            min-width: 380px;
+            max-width: 580px;
+            background: var(--surface);
+            border-radius: 20px;
+            border: 1px solid var(--border);
+            padding: 20px 18px;
+            position: relative;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+            box-shadow: 0 20px 50px rgba(0, 0, 0, 0.5);
+            transition: all 0.4s ease;
+        }
+        .chip-panel::before {
+            content: '';
+            position: absolute;
+            top: -60px;
+            right: -60px;
+            width: 180px;
+            height: 180px;
+            border-radius: 50%;
+            opacity: 0.06;
+            pointer-events: none;
+            transition: all 0.5s ease;
+        }
+        .chip-panel.arm {
+            border-top: 3px solid var(--arm-color);
+        }
+        .chip-panel.arm::before {
+            background: var(--arm-color);
+        }
+        .chip-panel.x86 {
+            border-top: 3px solid var(--x86-color);
+        }
+        .chip-panel.x86::before {
+            background: var(--x86-color);
+        }
+
+        .chip-header {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin-bottom: 14px;
+            position: relative;
+            z-index: 1;
+        }
+        .chip-icon {
+            width: 50px;
+            height: 50px;
+            border-radius: 14px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 900;
+            font-size: 1.2rem;
+            letter-spacing: -1px;
+            flex-shrink: 0;
+        }
+        .arm .chip-icon {
+            background: #0a3d2e;
+            color: #00e6ac;
+            border: 2px solid #00b89444;
+        }
+        .x86 .chip-icon {
+            background: #3d0f0a;
+            color: #ff6b5b;
+            border: 2px solid #e74c3c44;
+        }
+        .chip-name {
+            font-size: 1.3rem;
+            font-weight: 700;
+            letter-spacing: -0.3px;
+        }
+        .chip-type {
+            font-size: 0.7rem;
+            text-transform: uppercase;
+            letter-spacing: 1.5px;
+            color: var(--text-secondary);
+            font-weight: 600;
+        }
+        .arm .chip-name {
+            color: #00e6ac;
+        }
+        .x86 .chip-name {
+            color: #ff6b5b;
+        }
+
+        /* Pipeline */
+        .pipeline-container {
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+            position: relative;
+            z-index: 1;
+            flex: 1;
+        }
+        .pipeline-stage {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 10px 14px;
+            border-radius: 10px;
+            position: relative;
+            min-height: 46px;
+            transition: all 0.3s ease;
+            border: 1px solid transparent;
+        }
+        .arm .pipeline-stage {
+            background: #0a1a14;
+            border-color: #0f3025;
+        }
+        .x86 .pipeline-stage {
+            background: #1a0e0d;
+            border-color: #2f1512;
+        }
+        .stage-label {
+            font-weight: 600;
+            font-size: 0.78rem;
+            width: 90px;
+            flex-shrink: 0;
+            letter-spacing: -0.2px;
+        }
+        .arm .stage-label {
+            color: #00d4a0;
+        }
+        .x86 .stage-label {
+            color: #f08070;
+        }
+        .stage-track {
+            flex: 1;
+            height: 22px;
+            border-radius: 11px;
+            position: relative;
+            overflow: hidden;
+        }
+        .arm .stage-track {
+            background: #061210;
+            border: 1px solid #0f3a28;
+        }
+        .x86 .stage-track {
+            background: #0d0807;
+            border: 1px solid #2f1512;
+        }
+        .instruction-dot {
+            position: absolute;
+            width: 14px;
+            height: 14px;
+            border-radius: 50%;
+            top: 4px;
+            opacity: 0;
+            pointer-events: none;
+            box-shadow: 0 0 10px currentColor;
+            transition: none;
+        }
+        .arm .instruction-dot {
+            background: var(--arm-dot);
+            box-shadow: 0 0 14px var(--arm-dot);
+        }
+        .x86 .instruction-dot {
+            background: var(--x86-dot);
+            box-shadow: 0 0 14px var(--x86-dot);
+        }
+        .stage-track.active-track {
+            animation: trackPulse 0.6s ease-out;
+        }
+        @keyframes trackPulse {
+            0%,
+            100% {
+                box-shadow: inset 0 0 0px transparent;
+            }
+            50% {
+                box-shadow: inset 0 0 20px currentColor;
+            }
+        }
+        .arm .stage-track.active-track {
+            border-color: #00e6ac88;
+        }
+        .x86 .stage-track.active-track {
+            border-color: #ff6b5b88;
+        }
+
+        /* Microcode ROM highlight for x86 */
+        .microcode-badge {
+            display: inline-block;
+            padding: 2px 8px;
+            border-radius: 10px;
+            font-size: 0.6rem;
+            font-weight: 700;
+            letter-spacing: 0.5px;
+            background: #3d150a;
+            color: #ff8a75;
+            margin-left: 4px;
+            animation: microBlink 1.5s ease-in-out infinite;
+        }
+        @keyframes microBlink {
+            0%,
+            100% {
+                opacity: 0.7;
+            }
+            50% {
+                opacity: 1;
+            }
+        }
+
+        /* Stats row */
+        .stats-row {
+            display: flex;
+            gap: 8px;
+            margin-top: 12px;
+            flex-wrap: wrap;
+            position: relative;
+            z-index: 1;
+        }
+        .stat-item {
+            flex: 1;
+            min-width: 60px;
+            background: #0d1117;
+            border-radius: 10px;
+            padding: 10px 12px;
+            text-align: center;
+            border: 1px solid var(--border);
+        }
+        .stat-value {
+            font-size: 1.4rem;
+            font-weight: 700;
+            letter-spacing: -0.5px;
+        }
+        .arm .stat-value {
+            color: #00e6ac;
+        }
+        .x86 .stat-value {
+            color: #ff6b5b;
+        }
+        .stat-label {
+            font-size: 0.65rem;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            color: var(--text-secondary);
+            margin-top: 2px;
+        }
+
+        /* Heat indicator */
+        .heat-indicator {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            font-size: 0.7rem;
+            color: var(--text-secondary);
+            margin-top: 8px;
+            position: relative;
+            z-index: 1;
+        }
+        .heat-bar {
+            flex: 1;
+            height: 5px;
+            border-radius: 3px;
+            background: #1a1f2a;
+            overflow: hidden;
+        }
+        .heat-fill {
+            height: 100%;
+            border-radius: 3px;
+            transition: width 0.8s ease;
+        }
+        .arm .heat-fill {
+            background: linear-gradient(90deg, #00b894, #00e6ac);
+            width: 25%;
+        }
+        .x86 .heat-fill {
+            background: linear-gradient(90deg, #e74c3c, #ff6b5b);
+            width: 70%;
+        }
+
+        /* Control panel */
+        .control-panel {
+            width: 100%;
+            max-width: 1350px;
+            display: flex;
+            gap: 12px;
+            margin-top: 16px;
+            flex-wrap: wrap;
+            justify-content: center;
+            align-items: center;
+        }
+        .btn {
+            padding: 11px 24px;
+            border-radius: 25px;
+            font-weight: 600;
+            font-size: 0.85rem;
+            cursor: pointer;
+            letter-spacing: 0.3px;
+            border: 1px solid;
+            transition: all 0.25s ease;
+            background: transparent;
+            color: var(--text);
+            position: relative;
+            overflow: hidden;
+        }
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(0, 0, 0, 0.4);
+        }
+        .btn:active {
+            transform: scale(0.96);
+            transition: transform 0.1s ease;
+        }
+        .btn-start {
+            border-color: #5dade2;
+            color: #7ec8f8;
+        }
+        .btn-start:hover {
+            background: #5dade215;
+            border-color: #7ec8f8;
+        }
+        .btn-compare {
+            border-color: #f0c060;
+            color: #f0c060;
+        }
+        .btn-compare:hover {
+            background: #f0c06015;
+        }
+        .btn-reset {
+            border-color: #666;
+            color: #999;
+        }
+        .btn-reset:hover {
+            background: #ffffff08;
+            border-color: #888;
+        }
+        .btn-speed {
+            border-color: #8e6fc4;
+            color: #b49edf;
+            font-size: 0.75rem;
+        }
+        .btn-speed:hover {
+            background: #8e6fc415;
+        }
+        .btn.active-btn {
+            background: #5dade220;
+            border-color: #7ec8f8;
+            box-shadow: 0 0 20px #5dade230;
+        }
+
+        /* Info tooltip */
+        .info-section {
+            width: 100%;
+            max-width: 1350px;
+            margin-top: 16px;
+            display: flex;
+            gap: 16px;
+            flex-wrap: wrap;
+            justify-content: center;
+        }
+        .info-card {
+            flex: 1 1 280px;
+            max-width: 420px;
+            background: var(--surface);
+            border-radius: 14px;
+            padding: 16px 18px;
+            border: 1px solid var(--border);
+            font-size: 0.78rem;
+            line-height: 1.5;
+            color: var(--text-secondary);
+        }
+        .info-card h4 {
+            color: var(--text);
+            font-size: 0.9rem;
+            margin-bottom: 6px;
+            letter-spacing: -0.2px;
+        }
+        .info-card.arm-info h4 {
+            color: #00e6ac;
+        }
+        .info-card.x86-info h4 {
+            color: #ff6b5b;
+        }
+        .highlight-num {
+            font-weight: 700;
+            font-size: 1.1rem;
+        }
+        .arm-info .highlight-num {
+            color: #00e6ac;
+        }
+        .x86-info .highlight-num {
+            color: #ff6b5b;
+        }
+
+        /* Responsive */
+        @media (max-width: 850px) {
+            .chip-panel {
+                min-width: 300px;
+                flex: 1 1 90%;
+                max-width: 95%;
+            }
+            .pipeline-stage {
+                padding: 8px 10px;
+                gap: 6px;
+            }
+            .stage-label {
+                font-size: 0.7rem;
+                width: 65px;
+            }
+            .header h1 {
+                font-size: 1.4rem;
+            }
+            .btn {
+                padding: 8px 16px;
+                font-size: 0.75rem;
+            }
+        }
+    </style>
+</head>
+<body>
+
+    <!-- Header -->
+    <div class="header">
+        <h1>🔬 CentUnitPoint</h1>
+        <p class="subtitle">Emu Pipeline — Visual</p>
+        <div class="badge-row">
+            <span class="badge badge-risc">⚡ ARM · RISC</span>
+            <span class="badge badge-cisc">🔥 x86-64 · CISC</span>
+            <span class="badge badge-info">📐 Arch Harvard / Von Neumann</span>
+        </div>
+    </div>
+
+    <!-- Main: 2 Chips -->
+    <div class="main-container">
+        <!-- ARM Chip -->
+        <div class="chip-panel arm" id="armPanel">
+            <div class="chip-header">
+                <div class="chip-icon">ARM</div>
+                <div>
+                    <div class="chip-name">ARM Cortex-X4</div>
+                    <div class="chip-type">RISC · Simple · Saving Energy</div>
+                </div>
+            </div>
+            <div class="pipeline-container" id="armPipeline">
+                <div class="pipeline-stage" data-stage="fetch">
+                    <span class="stage-label">📥 Fetch</span>
+                    <div class="stage-track" id="arm-track-0"></div>
+                </div>
+                <div class="pipeline-stage" data-stage="decode">
+                    <span class="stage-label">🔍 Decode</span>
+                    <div class="stage-track" id="arm-track-1"></div>
+                </div>
+                <div class="pipeline-stage" data-stage="execute">
+                    <span class="stage-label">⚙️ Execute</span>
+                    <div class="stage-track" id="arm-track-2"></div>
+                </div>
+                <div class="pipeline-stage" data-stage="memory">
+                    <span class="stage-label">💾 Memory</span>
+                    <div class="stage-track" id="arm-track-3"></div>
+                </div>
+                <div class="pipeline-stage" data-stage="writeback">
+                    <span class="stage-label">📝 Write-back</span>
+                    <div class="stage-track" id="arm-track-4"></div>
+                </div>
+            </div>
+            <div class="stats-row">
+                <div class="stat-item"><div class="stat-value" id="arm-inst-count">0</div><div class="stat-label">Processed</div></div>
+                <div class="stat-item"><div class="stat-value" id="arm-ipc">1.8</div><div class="stat-label">IPC </div></div>
+                <div class="stat-item"><div class="stat-value" style="color:#00e6ac;">~3W</div><div class="stat-label">Watt</div></div>
+            </div>
+            <div class="heat-indicator">
+                🌡️ Heat <div class="heat-bar"><div class="heat-fill" id="armHeatFill"></div></div> <span id="armHeatLabel">LOW</span>
+            </div>
+        </div>
+
+        <!-- x86-64 Chip -->
+        <div class="chip-panel x86" id="x86Panel">
+            <div class="chip-header">
+                <div class="chip-icon">x86</div>
+                <div>
+                    <div class="chip-name">Intel Core i9 / AMD Zen 5</div>
+                    <div class="chip-type">CISC · DIF Codec · High Perfomance</div>
+                </div>
+            </div>
+            <div class="pipeline-container" id="x86Pipeline">
+                <div class="pipeline-stage" data-stage="fetch">
+                    <span class="stage-label">📥 Fetch</span>
+                    <div class="stage-track" id="x86-track-0"></div>
+                </div>
+                <div class="pipeline-stage" data-stage="predecode">
+                    <span class="stage-label">🔎 Pre-Decode</span>
+                    <div class="stage-track" id="x86-track-1"></div>
+                </div>
+                <div class="pipeline-stage" data-stage="microcode">
+                    <span class="stage-label">🧬 Microcode<span class="microcode-badge">ROM</span></span>
+                    <div class="stage-track" id="x86-track-2"></div>
+                </div>
+                <div class="pipeline-stage" data-stage="dispatch">
+                    <span class="stage-label">📋 Dispatch</span>
+                    <div class="stage-track" id="x86-track-3"></div>
+                </div>
+                <div class="pipeline-stage" data-stage="execute">
+                    <span class="stage-label">⚙️ Execute (x4)</span>
+                    <div class="stage-track" id="x86-track-4"></div>
+                </div>
+                <div class="pipeline-stage" data-stage="memory">
+                    <span class="stage-label">💾 Memory</span>
+                    <div class="stage-track" id="x86-track-5"></div>
+                </div>
+                <div class="pipeline-stage" data-stage="retire">
+                    <span class="stage-label">✅ Retire</span>
+                    <div class="stage-track" id="x86-track-6"></div>
+                </div>
+            </div>
+            <div class="stats-row">
+                <div class="stat-item"><div class="stat-value" id="x86-inst-count">0</div><div class="stat-label">Processed</div></div>
+                <div class="stat-item"><div class="stat-value" id="x86-ipc">2.4</div><div class="stat-label">IPC </div></div>
+                <div class="stat-item"><div class="stat-value" style="color:#ff6b5b;">~15-65W</div><div class="stat-label">Watt</div></div>
+            </div>
+            <div class="heat-indicator">
+                🌡️ Heat <div class="heat-bar"><div class="heat-fill" id="x86HeatFill"></div></div> <span id="x86HeatLabel">Cao</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- Controls -->
+    <div class="control-panel">
+        <button class="btn btn-start" id="btnStart" title="SIM START">▶ SIM START</button>
+        <button class="btn btn-compare" id="btnCompare" title="Running: ARM process 10 sim, x86 process 1 dif the same">🔬 Direct</button>
+        <button class="btn btn-speed" id="btnSpeed" title="ChangeSpeed">⏱ Speed: 1x</button>
+        <button class="btn btn-reset" id="btnReset">↺ Reset</button>
+    </div>
+
+    <!-- Info section -->
+    <div class="info-section">
+        <div class="info-card arm-info">
+		<h4>🟢 ARM (RISC) — ShorterCodec</h4>
+            <p>
+                <span class="highlight-num">~200 codec</span> base, long <strong>spectrum 4 byte</strong>.
+                Pipeline <strong>5 floor</strong> simple , direct exclude microcode.
+                Plus: <strong>saving energy</strong>, low heat, less energy for dim and mobile.
+                PerCodec <em>simplecodec</em> — morecodecfor A dif.
+            </p>
+        </div>
+        <div class="info-card x86-info">
+		<h4>🔴 x86-64 (CISC) — Bunchtext</h4>
+            <p>
+                <span class="highlight-num">~1500+ codec</span>, contextlong <strong>riv 1–15 byte</strong>.
+                Pipeline <strong>7+ floor</strong> differ, have <strong>Microcode ROM</strong> bump CISC to μops.
+			Plus: <strong>high performance</strong>, 1 codec multitasking (calculate + memory leak).
+                Đánh đổi: More energy and heat.
+            </p>
+        </div>
+    </div>
+
+    <script>
+        (function() {
+            // --- DOM refs ---
+            const armTracks = [0, 1, 2, 3, 4].map(i => document.getElementById(`arm-track-${i}`));
+            const x86Tracks = [0, 1, 2, 3, 4, 5, 6].map(i => document.getElementById(`x86-track-${i}`));
+            const armInstCountEl = document.getElementById('arm-inst-count');
+            const x86InstCountEl = document.getElementById('x86-inst-count');
+            const armHeatFill = document.getElementById('armHeatFill');
+            const x86HeatFill = document.getElementById('x86HeatFill');
+            const armHeatLabel = document.getElementById('armHeatLabel');
+            const x86HeatLabel = document.getElementById('x86HeatLabel');
+            const btnStart = document.getElementById('btnStart');
+            const btnCompare = document.getElementById('btnCompare');
+            const btnReset = document.getElementById('btnReset');
+            const btnSpeed = document.getElementById('btnSpeed');
+            const armPanel = document.getElementById('armPanel');
+            const x86Panel = document.getElementById('x86Panel');
+
+            // --- State ---
+            let animationId = null;
+            let speedMultiplier = 1;
+            const speedOptions = [0.5, 1, 1.5, 2, 3];
+            let speedIndex = 1; // starts at 1x
+
+            // Instruction queues
+            let armInstructions = [];
+            let x86Instructions = [];
+            let armCompletedCount = 0;
+            let x86CompletedCount = 0;
+
+            // For tracking active dots per track
+            let armActiveDots = Array(5).fill(null).map(() => []);
+            let x86ActiveDots = Array(7).fill(null).map(() => []);
+
+            // Timing
+            const BASE_TICK_MS = 280; // base tick per stage at 1x
+            let lastTickTime = 0;
+            let simulationRunning = false;
+
+            // --- Create dot element ---
+            function createDot(chipType) {
+                const dot = document.createElement('div');
+                dot.className = 'instruction-dot';
+                if (chipType === 'arm') {
+                    dot.style.background = '#00e6ac';
+                    dot.style.boxShadow = '0 0 14px #00e6ac';
+                } else {
+                    dot.style.background = '#ff6b5b';
+                    dot.style.boxShadow = '0 0 14px #ff6b5b';
+                }
+                dot.style.opacity = '0';
+                dot.style.left = '-16px';
+                dot.style.top = '4px';
+                dot.style.width = '14px';
+                dot.style.height = '14px';
+                dot.style.borderRadius = '50%';
+                dot.style.position = 'absolute';
+                dot.style.pointerEvents = 'none';
+                dot.style.transition = 'none';
+                return dot;
+            }
+
+            // --- Animate dot across a track ---
+            function animateDotOnTrack(trackElement, dot, durationMs, chipType, onComplete) {
+                const trackWidth = trackElement.clientWidth;
+                if (trackWidth <= 0) {
+                    if (onComplete) onComplete();
+                    return;
+                }
+                dot.style.opacity = '1';
+                dot.style.left = '0px';
+                dot.style.transition = 'none';
+
+                // Force reflow
+                dot.offsetHeight;
+
+                // Animate
+                const startTime = performance.now();
+                const startLeft = 0;
+                const endLeft = trackWidth - 16;
+
+                function step(now) {
+                    const elapsed = now - startTime;
+                    const progress = Math.min(elapsed / durationMs, 1);
+                    // Ease: slight ease-in-out
+                    const eased = progress < 0.5 ?
+                        2 * progress * progress :
+                        -1 + (4 - 2 * progress) * progress;
+                    const currentLeft = startLeft + (endLeft - startLeft) * eased;
+                    dot.style.left = currentLeft + 'px';
+                    dot.style.transition = 'none';
+
+                    if (progress < 1) {
+                        requestAnimationFrame(step);
+                    } else {
+                        dot.style.left = endLeft + 'px';
+                        // Fade out
+                        dot.style.transition = 'opacity 0.15s ease';
+                        dot.style.opacity = '0';
+                        setTimeout(() => {
+                            if (dot.parentNode) dot.parentNode.removeChild(dot);
+                            if (onComplete) onComplete();
+                        }, 160);
+                    }
+                }
+                requestAnimationFrame(step);
+            }
+
+            // --- Pulse track ---
+            function pulseTrack(trackElement, chipType) {
+                trackElement.classList.add('active-track');
+                const color = chipType === 'arm' ? '#00e6ac88' : '#ff6b5b88';
+                trackElement.style.boxShadow = `inset 0 0 24px ${color}`;
+                setTimeout(() => {
+                    trackElement.classList.remove('active-track');
+                    trackElement.style.boxShadow = '';
+                }, 500);
+            }
+
+            // --- Process one instruction through pipeline ---
+            function processInstruction(chipType) {
+                if (chipType === 'arm') {
+                    if (armInstructions.length === 0) return;
+                    const inst = armInstructions.shift();
+                    let currentStage = 0;
+                    const totalStages = 5;
+
+                    function advanceStage() {
+                        if (currentStage >= totalStages) {
+                            // Completed
+                            armCompletedCount++;
+                            armInstCountEl.textContent = armCompletedCount;
+                            // Update heat
+                            updateArmHeat();
+                            return;
+                        }
+                        const track = armTracks[currentStage];
+                        const dot = createDot('arm');
+                        track.appendChild(dot);
+                        pulseTrack(track, 'arm');
+
+                        const stageDuration = BASE_TICK_MS / speedMultiplier;
+                        animateDotOnTrack(track, dot, stageDuration, 'arm', () => {
+                            currentStage++;
+                            advanceStage();
+                        });
+                    }
+                    advanceStage();
+                } else {
+                    // x86
+                    if (x86Instructions.length === 0) return;
+                    const inst = x86Instructions.shift();
+                    let currentStage = 0;
+                    const totalStages = 7;
+
+                    function advanceStage() {
+                        if (currentStage >= totalStages) {
+                            x86CompletedCount++;
+                            x86InstCountEl.textContent = x86CompletedCount;
+                            updateX86Heat();
+                            return;
+                        }
+                        const track = x86Tracks[currentStage];
+                        const dot = createDot('x86');
+                        track.appendChild(dot);
+                        pulseTrack(track, 'x86');
+
+                        // Microcode stage takes longer
+                        let stageDuration = BASE_TICK_MS / speedMultiplier;
+                        if (currentStage === 2) {
+                            // Microcode ROM stage - takes 2x longer
+                            stageDuration *= 2.2;
+                        }
+                        if (currentStage === 4) {
+                            // Execute stage with multiple ALUs - slightly faster
+                            stageDuration *= 0.7;
+                        }
+                        animateDotOnTrack(track, dot, stageDuration, 'x86', () => {
+                            currentStage++;
+                            advanceStage();
+                        });
+                    }
+                    advanceStage();
+                }
+            }
+
+            // --- Update heat visualization ---
+            function updateArmHeat() {
+                const baseHeat = 18;
+                const maxHeat = 45;
+                const activityLevel = Math.min(armCompletedCount / 40, 1);
+                const heat = baseHeat + activityLevel * (maxHeat - baseHeat);
+                armHeatFill.style.width = heat + '%';
+		    if (heat < 25) armHeatLabel.textContent = 'LOW 🟢';
+		    else if (heat < 38) armHeatLabel.textContent = 'Normal 🟡';
+                else armHeatLabel.textContent = 'Warm 🟠';
+            }
+
+            function updateX86Heat() {
+                const baseHeat = 55;
+                const maxHeat = 90;
+                const activityLevel = Math.min(x86CompletedCount / 35, 1);
+                const heat = baseHeat + activityLevel * (maxHeat - baseHeat);
+                x86HeatFill.style.width = heat + '%';
+		    if (heat < 65) x86HeatLabel.textContent = 'Warm 🟠';
+		    else if (heat < 80) x86HeatLabel.textContent = 'HOT 🔴';
+                else x86HeatLabel.textContent = 'Very HOT 🔥';
+            }
+
+            // --- Spawn instructions periodically ---
+            function spawnInstructions() {
+                // ARM spawns more frequently (simpler instructions, more of them needed)
+                if (Math.random() < 0.55 * speedMultiplier) {
+                    armInstructions.push({ id: Date.now() + Math.random() });
+                }
+                // x86 spawns less frequently but each does more work
+                if (Math.random() < 0.35 * speedMultiplier) {
+                    x86Instructions.push({ id: Date.now() + Math.random() });
+                }
+            }
+
+            // --- Main simulation loop ---
+            function simulationTick(timestamp) {
+                if (!simulationRunning) return;
+
+                if (timestamp - lastTickTime > BASE_TICK_MS / speedMultiplier) {
+                    lastTickTime = timestamp;
+                    spawnInstructions();
+                    // Try to process instructions
+                    processInstruction('arm');
+                    processInstruction('x86');
+                }
+
+                // Also try to keep pipelines full
+                if (armInstructions.length > 0 && Math.random() < 0.4) {
+                    processInstruction('arm');
+                }
+                if (x86Instructions.length > 0 && Math.random() < 0.3) {
+                    processInstruction('x86');
+                }
+
+                animationId = requestAnimationFrame(simulationTick);
+            }
+
+            // --- Start simulation ---
+            function startSimulation() {
+                if (simulationRunning) return;
+                simulationRunning = true;
+                lastTickTime = performance.now();
+                btnStart.classList.add('active-btn');
+                btnStart.textContent = '⏸ Running...';
+                // Seed some instructions
+                for (let i = 0; i < 3; i++) {
+                    armInstructions.push({ id: Date.now() + Math.random() });
+                    x86Instructions.push({ id: Date.now() + Math.random() });
+                }
+                animationId = requestAnimationFrame(simulationTick);
+            }
+
+            function stopSimulation() {
+                simulationRunning = false;
+                if (animationId) {
+                    cancelAnimationFrame(animationId);
+                    animationId = null;
+                }
+                btnStart.classList.remove('active-btn');
+                btnStart.textContent = '▶ SIM START';
+            }
+
+            function resetSimulation() {
+                stopSimulation();
+                // Clear all dots
+                [...armTracks, ...x86Tracks].forEach(track => {
+                    const dots = track.querySelectorAll('.instruction-dot');
+                    dots.forEach(d => d.remove());
+                });
+                armInstructions = [];
+                x86Instructions = [];
+                armCompletedCount = 0;
+                x86CompletedCount = 0;
+                armInstCountEl.textContent = '0';
+                x86InstCountEl.textContent = '0';
+                armHeatFill.style.width = '25%';
+                x86HeatFill.style.width = '70%';
+                armHeatLabel.textContent = 'Thấp';
+                x86HeatLabel.textContent = 'Cao';
+                armActiveDots = Array(5).fill(null).map(() => []);
+                x86ActiveDots = Array(7).fill(null).map(() => []);
+                btnStart.classList.remove('active-btn');
+                btnStart.textContent = '▶ Bắt đầu Mô phỏng';
+            }
+
+            // --- Compare mode: ARM processes 10 simple instructions while x86 processes 1 complex ---
+            function runComparison() {
+                resetSimulation();
+                // Queue 10 ARM instructions
+                for (let i = 0; i < 10; i++) {
+                    armInstructions.push({ id: 'compare-arm-' + i });
+                }
+                // Queue 1 x86 instruction (represents a complex CISC instruction)
+                x86Instructions.push({ id: 'compare-x86-complex' });
+
+                // Start simulation
+                startSimulation();
+
+                // Highlight both panels
+                armPanel.style.boxShadow = '0 0 40px #00b89433, 0 20px 50px rgba(0,0,0,0.5)';
+                x86Panel.style.boxShadow = '0 0 40px #e74c3c33, 0 20px 50px rgba(0,0,0,0.5)';
+                setTimeout(() => {
+                    armPanel.style.boxShadow = '0 20px 50px rgba(0,0,0,0.5)';
+                    x86Panel.style.boxShadow = '0 20px 50px rgba(0,0,0,0.5)';
+                }, 3000);
+
+                // Show a brief explanation
+                const explanation = document.createElement('div');
+                explanation.style.cssText = `
+                    position: fixed; top: 20px; left: 50%; transform: translateX(-50%);
+                    background: #1a1f2a; color: #f0c060; padding: 14px 24px; border-radius: 12px;
+                    font-weight: 600; font-size: 0.9rem; z-index: 999; pointer-events: none;
+                    border: 1px solid #f0c06044; box-shadow: 0 10px 30px rgba(0,0,0,0.6);
+                    letter-spacing: 0.3px; text-align: center;
+                    animation: fadeInOut 3.5s ease forwards;
+                `;
+                explanation.textContent =
+                    '🔬 : ARM process 10 codec RISC simple ↔ x86-64 process 1 codec CISC harder but the same';
+                document.body.appendChild(explanation);
+
+                // Add keyframe for fadeInOut
+                if (!document.getElementById('fadeInOutStyle')) {
+                    const styleEl = document.createElement('style');
+                    styleEl.id = 'fadeInOutStyle';
+                    styleEl.textContent = `
+                        @keyframes fadeInOut {
+                            0% { opacity: 0; transform: translateX(-50%) translateY(-20px); }
+                            15% { opacity: 1; transform: translateX(-50%) translateY(0); }
+                            75% { opacity: 1; transform: translateX(-50%) translateY(0); }
+                            100% { opacity: 0; transform: translateX(-50%) translateY(-10px); }
+                        }
+                    `;
+                    document.head.appendChild(styleEl);
+                }
+
+                setTimeout(() => {
+                    if (explanation.parentNode) explanation.remove();
+                }, 3600);
+            }
+
+            // --- Event listeners ---
+            btnStart.addEventListener('click', () => {
+                if (simulationRunning) {
+                    stopSimulation();
+                } else {
+                    startSimulation();
+                }
+            });
+
+            btnCompare.addEventListener('click', () => {
+                runComparison();
+            });
+
+            btnReset.addEventListener('click', () => {
+                resetSimulation();
+            });
+
+            btnSpeed.addEventListener('click', () => {
+                speedIndex = (speedIndex + 1) % speedOptions.length;
+                speedMultiplier = speedOptions[speedIndex];
+                btnSpeed.textContent = `⏱ Tốc độ: ${speedMultiplier}x`;
+                if (speedMultiplier >= 2) {
+                    btnSpeed.style.borderColor = '#f0c060';
+                    btnSpeed.style.color = '#f0c060';
+                } else if (speedMultiplier >= 1.5) {
+                    btnSpeed.style.borderColor = '#e67e22';
+                    btnSpeed.style.color = '#e67e22';
+                } else {
+                    btnSpeed.style.borderColor = '#8e6fc4';
+                    btnSpeed.style.color = '#b49edf';
+                }
+            });
+
+            // --- Initial heat setup ---
+            updateArmHeat();
+            updateX86Heat();
+
+            // --- Keyboard shortcut ---
+            document.addEventListener('keydown', (e) => {
+                if (e.code === 'Space') {
+                    e.preventDefault();
+                    if (simulationRunning) stopSimulation();
+                    else startSimulation();
+                } else if (e.code === 'KeyR') {
+                    resetSimulation();
+                } else if (e.code === 'KeyC') {
+                    runComparison();
+                } else if (e.code === 'KeyS') {
+                    btnSpeed.click();
+                }
+            });
+
+            // --- Auto-start hint ---
+		    console.log('🔬 RSCPUARCH START');
+		    console.log('   ▶ [Space] running ');
+		    console.log('   🔬  [C]  ARM 10 transcode vs x86 1 transcode.');
+		    console.log('   ⏱ speedchange [S] , [R] reset.');
+		    console.log('   🟢 ARM: Pipeline 5 floor, simplecode, less energy.');
+		    console.log('   🔴 x86-64: Pipeline 7 floor, Microcode ROM, faster but more energy.');
+
+            // Gentle initial glow pulse
+            setTimeout(() => {
+                armPanel.style.boxShadow = '0 0 30px #00b89415, 0 20px 50px rgba(0,0,0,0.5)';
+                x86Panel.style.boxShadow = '0 0 30px #e74c3c15, 0 20px 50px rgba(0,0,0,0.5)';
+                setTimeout(() => {
+                    armPanel.style.boxShadow = '0 20px 50px rgba(0,0,0,0.5)';
+                    x86Panel.style.boxShadow = '0 20px 50px rgba(0,0,0,0.5)';
+                }, 2000);
+            }, 500);
+        })();
+    </script>
+</body>
+</html>
