@@ -1030,7 +1030,7 @@
             btnSpeed.addEventListener('click', () => {
                 speedIndex = (speedIndex + 1) % speedOptions.length;
                 speedMultiplier = speedOptions[speedIndex];
-                btnSpeed.textContent = `⏱ Tốc độ: ${speedMultiplier}x`;
+                btnSpeed.textContent = `⏱ Speed: ${speedMultiplier}x`;
                 if (speedMultiplier >= 2) {
                     btnSpeed.style.borderColor = '#f0c060';
                     btnSpeed.style.color = '#f0c060';
